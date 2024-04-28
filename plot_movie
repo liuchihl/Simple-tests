@@ -1,0 +1,93 @@
+# plot all cases together as a movie
+
+# 0 flux, with initial T
+T_noflux_init = FieldTimeSeries("one_dimensional_diffusion_withbackgroundfield_noflux.jld2", "T_total")
+
+# nonzero flux, with initial T
+T_flux_init = FieldTimeSeries("one_dimensional_diffusion_withbackgroundfield_nonzeroflux.jld2", "T_total")
+
+# nonzero flux, without initial T
+T_noflux_noinit = FieldTimeSeries("one_dimensional_diffusion_withbackgroundfield_noflux_noinitial.jld2", "T_total")
+
+# nonzero flux, without initial T
+T_flux_noinit = FieldTimeSeries("one_dimensional_diffusion_withbackgroundfield_nonzeroflux_noinitial.jld2", "T_total")
+
+
+fig1 = Figure()
+
+ax1 = Axis(fig1[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z") 
+# title = "Boundary condition: n̂  ̇ ∇T=0 \n, Background field: T̄=N²*z")
+xlims!(ax1, -.25, 1)
+# ax2 = Axis(fig[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z",
+#  title = "Boundary condition: ∂T/∂z = -N²\n, Background field: T̄=N²*z")
+# xlims!(ax2, -.25, 1)
+
+
+n = Observable(1)
+
+T = @lift interior(T_flux_init[$n], 1, 1, :)
+L1 = lines!(ax1,T, z, linewidth = 3)
+
+T = @lift interior(T_noflux_init[$n], 1, 1, :)
+L2 = lines!(ax1,T, z,linestyle =:dash, linewidth = 3, color =:red)
+
+label = @lift "t = " * string(round(times[$n], digits=3))
+Label(fig1[1,1], label, tellwidth=false)
+
+axislegend(ax1,[L1, L2],
+    ["Boundary condition: n̂  ̇ ∇T=0, \n Background field: <T>=N²*z, \n Initial T(z) = exp(-z^2 / (2width^2))
+    ",
+     "Boundary condition: ∂T/∂z = -N², \n Background field: <T̄>=N²*z, \n Initial T(z) = exp(-z^2 / (2width^2))"])
+
+
+fig1
+
+frames = 1:length(times)
+
+@info "Making an animation..."
+
+record(fig1, "one_dimensional_diffusion_withbackgroundfield.mp4", frames, framerate=24) do i
+    n[] = i
+end
+
+
+
+
+
+fig2 = Figure()
+
+ax1 = Axis(fig2[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z") 
+# title = "Boundary condition: n̂  ̇ ∇T=0 \n, Background field: T̄=N²*z")
+xlims!(ax1, -.2, .2)
+# ax2 = Axis(fig[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z",
+#  title = "Boundary condition: ∂T/∂z = -N²\n, Background field: T̄=N²*z")
+# xlims!(ax2, -.25, 1)
+
+
+n = Observable(1)
+
+T = @lift interior(T_flux_noinit[$n], 1, 1, :)
+L1 = lines!(ax1,T, z, linewidth = 3)
+
+T = @lift interior(T_noflux_noinit[$n], 1, 1, :)
+L2 = lines!(ax1,T, z,linestyle =:dash, linewidth = 3, color =:red)
+
+label = @lift "t = " * string(round(times[$n], digits=3))
+Label(fig2[1,1], label, tellwidth=false)
+
+axislegend(ax1,[L1, L2],
+    ["Boundary condition: n̂  ̇ ∇T=0, \n Background field: <T>=N²*z, \n Initial T(z) = 0
+    ",
+     "Boundary condition: ∂T/∂z = -N², \n Background field: <T̄>=N²*z, \n Initial T(z) = 0"],
+     position = :lt)
+
+
+fig2
+
+frames = 1:length(times)
+
+@info "Making an animation..."
+
+record(fig2, "one_dimensional_diffusion_withbackgroundfield_noIC.mp4", frames, framerate=24) do i
+    n[] = i
+end
