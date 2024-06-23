@@ -1,7 +1,8 @@
 using Pkg
 pkg"add Oceananigans, CairoMakie"
 using Oceananigans
-
+using SpecialFunctions
+using JLD2
 # Environmental parameters
 # Linear background stratification (in z)
 N=.5
@@ -9,11 +10,11 @@ N=.5
 ĝ = (sin(θ), 0, cos(θ)) # vertical (gravity-oriented) unit vector in rotated coordinates
 
 
-grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=128, z=(0, 1), topology=(Flat, Flat, Bounded))
 
 
 
-bottomimmerse = -0.25
+bottomimmerse = 0
 grid_immerse = ImmersedBoundaryGrid(grid, GridFittedBottom(bottomimmerse)) 
 
 buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -[ĝ...])
@@ -70,11 +71,19 @@ simulation.output_writers[:buoyancy] =
 
 run!(simulation)
 
+## solve for analytical solution:
+# general solution for the heat equation with no-flux BC and N²z as initial condition
+N=.5;
+κ = 0.5;
+
+# b_anal(t) = N^2*√(4*κ*t) .* erf.(z / √(4*κ*t))
+b_anal(t) = N^2*z .* (erf.(z / √(4*κ*t)) ) .+ 2*N^2*√(κ*t)/√π*exp.(-z.^2/(4*κ*t))
+
 using Printf
 
-B_timeseries = FieldTimeSeries("one_dimensional_diffusion_withbackgroundfield_nonzerograd_noinitial_tilt.jld2", "B_total")
-b_timeseries = FieldTimeSeries("one_dimensional_diffusion_withbackgroundfield_nonzerograd_noinitial_tilt.jld2", "b")
-b̄_timeseries = FieldTimeSeries("one_dimensional_diffusion_withbackgroundfield_nonzerograd_noinitial_tilt.jld2", "b_mean")
+B_timeseries = FieldTimeSeries(filename, "B_total")
+b_timeseries = FieldTimeSeries(filename, "b")
+b̄_timeseries = FieldTimeSeries(filename, "b_mean")
 times = B_timeseries.times
 # using JLD2
 # T_total2 = jldopen("one_dimensional_diffusion_constN2.jld2","T_total")
@@ -82,9 +91,16 @@ n = Observable(1)
 
 fig = Figure()
 ax1 = Axis(fig[2, 1]; xlabel = "total buoyancy", ylabel = "z")
-xlims!(ax1, -.2, .2)
+xlims!(ax1, -.1, .4)
 B = @lift interior(B_timeseries[$n], 1, 1, :)
-lines!(ax1,B, z)
+L1 = lines!(ax1,B, z) 
+b_analytical = @lift b_anal(times[$n])
+L2 = lines!(ax1, b_analytical, z, linestyle=:dash, color=:red)
+
+axislegend(ax1,[L1, L2],
+    ["Numerical solution",
+     "Analytical solution"],
+     position = :lt)
 
 ax2 = Axis(fig[2, 2]; xlabel = "buoyancy perturbation", yticklabelsvisible=false)
 xlims!(ax2, -.2, .2)
