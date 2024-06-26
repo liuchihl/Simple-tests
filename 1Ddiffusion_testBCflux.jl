@@ -27,9 +27,9 @@ closure = ScalarDiffusivity(κ=.5,)
 @inline constant_stratification(z, t, p) = p.N² * ẑ(z, p.ĝ)
 b̄_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N^2))
 diffusivity
-normal = 0#-N^2*cos(θ)    # normal slope 
+normal = -N^2*cos(θ)    # normal slope 
 normal_top = 0.
-cross = 0#-N^2*sin(θ)     # cross slope
+cross = -N^2*sin(θ)     # cross slope
 
 b_immerse = ImmersedBoundaryCondition(bottom=GradientBoundaryCondition(normal),
                     west = GradientBoundaryCondition(cross), east = GradientBoundaryCondition(-cross))
@@ -63,9 +63,8 @@ import Oceananigans.TurbulenceClosures
 using Oceananigans.Operators: ∂zᶠᶜᶠ, ℑxzᶠᵃᶜ, ∂zᶜᶜᶠ, ℑzᵃᵃᶜ, ℑxzᶠᵃᶜ
 
 function b_forcing_func(i, j, k, grid, clock, model_fields)
-    # vertical diffusivity κ
     
-    # vertical derivative of background buoyancy
+    # [κN²cosθ](z+Δz/2) - [κN²cosθ](z-Δz/2)     
 diffusive_flux = @inbounds (κzᶜᶜᶠ(i, j, k+1, grid, model.closure, model.diffusivity_fields, Val(:b), clock, model_fields) *
                     ℑzᵃᵃᶜ(i, j, k+1, grid, ∂zᶜᶜᶠ, model.background_fields.tracers.b) * cos(θ)) -
                     (κzᶜᶜᶠ(i, j, k, grid, model.closure, model.diffusivity_fields, Val(:b), clock, model_fields) *
@@ -75,22 +74,6 @@ diffusive_flux = @inbounds (κzᶜᶜᶠ(i, j, k+1, grid, model.closure, model.d
 end
 
 b_forcing = Forcing(b_forcing_func, discrete_form=true)
-
-# # A term that damps the local velocity field in the presence of stratification
-# using Oceananigans.Operators: ∂zᶠᶜᶠ, ℑxzᶠᵃᶜ
-
-# function b_forcing_func(i, j, k, grid, clock, model_fields, ε)
-#     # The vertical derivative of buoyancy, interpolated to the u-velocity location:
-#     N² = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, model.tracers.b)   # C,C,C ➡ F,C,F ➡ F,C,C
-
-#     # Set to zero in unstable stratification where N² < 0:
-#     # N² = max(N², zero(typeof(N²)))
-
-#     return @inbounds - ε * (N²) * model_fields.u[i, j, k]
-# end
-# b_forcing = Forcing(b_forcing_func, discrete_form=true, parameters=1e-3)
-
-
 
 model = NonhydrostaticModel(; grid=grid_immerse, closure, tracers=:b,
         background_fields = (b = b̄_field,),
