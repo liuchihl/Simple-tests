@@ -26,7 +26,7 @@ closure = ScalarDiffusivity(κ=.5,)
 @inline ẑ(z, ĝ) = z*ĝ[3]
 @inline constant_stratification(z, t, p) = p.N² * ẑ(z, p.ĝ)
 b̄_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N^2))
-diffusivity
+
 normal = -N^2*cos(θ)    # normal slope 
 normal_top = 0.
 cross = -N^2*sin(θ)     # cross slope
@@ -37,11 +37,11 @@ b_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(normal),
                     top = GradientBoundaryCondition(normal_top), immersed=b_immerse);
 
 
-# model = NonhydrostaticModel(; grid=grid_immerse, closure, tracers=:b,
-#         background_fields = (b = b̄_field,),
-#         boundary_conditions=(; b = b_bcs),
-#         buoyancy=buoyancy,
-#         ) 
+model = NonhydrostaticModel(; grid=grid_immerse, closure, tracers=:b,
+        background_fields = (b = b̄_field,),
+        boundary_conditions=(; b = b_bcs),
+        buoyancy=buoyancy,
+        ) 
 
 
 # define a forcing function for background buoyancy diffusion
